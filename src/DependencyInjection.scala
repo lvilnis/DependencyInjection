@@ -18,36 +18,41 @@ object DependencyInjection {
     def serve = "Barrrr!!"
   }
 
-  trait Constructable { }
-  trait Constructable1[-A] {}
-  trait Constructable2[-A, -B] {}
-  trait Constructable3[-A, -B, -C] {}
-  trait Constructable4[-A, -B, -C, -D] {}
+  trait Constructable[T] { }
+  trait Constructable1[T, -A] {}
+  trait Constructable2[T, -A, -B] {}
+  trait Constructable3[T, -A, -B, -C] {}
+  trait Constructable4[T, -A, -B, -C, -D] {}
 
   // note: HLists would make this much prettier
   // and KList[Manifest]
   // and/or, we could use typeclasses instead of marker interfaces!
   // great idea.
+
   trait DependencyInjectionContainer {
     def resolveService(serviceType: Class[_]): AnyRef
-    def create[T <: Constructable](implicit constructableManifest: Manifest[T]): T
-    def create[T <: Constructable1[A], A](arg1: A)
-          (implicit constructableManifest: Manifest[T],
+    def create[T](implicit constructable: Constructable[T], constructableManifest: Manifest[T]): T
+    def create[T, A](arg1: A)
+          (implicit constructable: Constructable1[T, A],
+           constructableManifest: Manifest[T],
            arg1Manifest: Manifest[A]): T
-    def create[T <: Constructable2[A, B], A, B]
+    def create[T, A, B]
           (arg1: A, arg2: B)
-          (implicit constructableManifest: Manifest[T],
+          (implicit constructable: Constructable2[T, A, B],
+           constructableManifest: Manifest[T],
            arg1Manifest: Manifest[A],
            arg2Manifest: Manifest[B]): T
-    def create[T <: Constructable3[A, B, C], A, B, C]
+    def create[T, A, B, C]
           (arg1: A, arg2: B, arg3: C)
-          (implicit constructableManifest: Manifest[T],
+          (implicit constructable: Constructable3[T, A, B, C],
+           constructableManifest: Manifest[T],
            arg1Manifest: Manifest[A],
            arg2Manifest: Manifest[B],
            arg3Manifest: Manifest[C]): T
-    def create[T <: Constructable4[A, B, C, D], A, B, C, D]
-          (arg1: A, arg2: B, arg3:       C, arg4: D)
-          (implicit constructableManifest: Manifest[T],
+    def create[T, A, B, C, D]
+          (arg1: A, arg2: B, arg3: C, arg4: D)
+          (implicit constructable: Constructable4[T, A, B, C, D],
+           constructableManifest: Manifest[T],
            arg1Manifest: Manifest[A],
            arg2Manifest: Manifest[B],
            arg3Manifest: Manifest[C],
@@ -64,12 +69,13 @@ object DependencyInjection {
       typesToSingletons = typesToSingletons + (instanceManifest.erasure -> instance.asInstanceOf[AnyRef])
     }
 
-    def create[T <: Constructable](implicit constructableManifest: Manifest[T]): T = {
+    def create[T](implicit constructable: Constructable[T], constructableManifest: Manifest[T]): T = {
       construct(constructableManifest.erasure, Seq(), Seq()).asInstanceOf[T]
     }
 
-    def create[T <: Constructable1[A], A](arg1: A)
-          (implicit constructableManifest: Manifest[T],
+    def create[T, A](arg1: A)
+          (implicit constructable: Constructable1[T, A],
+           constructableManifest: Manifest[T],
            arg1Manifest: Manifest[A]): T = {
 
       construct(constructableManifest.erasure,
@@ -78,9 +84,10 @@ object DependencyInjection {
         .asInstanceOf[T]
     }
 
-    def create[T <: Constructable2[A, B], A, B]
+    def create[T, A, B]
           (arg1: A, arg2: B)
-          (implicit constructableManifest: Manifest[T],
+          (implicit constructable: Constructable2[T, A, B],
+           constructableManifest: Manifest[T],
            arg1Manifest: Manifest[A],
            arg2Manifest: Manifest[B]): T = {
 
@@ -90,9 +97,10 @@ object DependencyInjection {
         .asInstanceOf[T]
     }
 
-    def create[T <: Constructable3[A, B, C], A, B, C]
+    def create[T, A, B, C]
           (arg1: A, arg2: B, arg3: C)
-          (implicit constructableManifest: Manifest[T],
+          (implicit constructable: Constructable3[T, A, B, C],
+           constructableManifest: Manifest[T],
            arg1Manifest: Manifest[A],
            arg2Manifest: Manifest[B],
            arg3Manifest: Manifest[C]): T = {
@@ -103,13 +111,14 @@ object DependencyInjection {
         .asInstanceOf[T]
     }
 
-    def create[T <: Constructable4[A, B, C, D], A, B, C, D]
-          (arg1: A, arg2: B, arg3:       C, arg4: D)
-                (implicit constructableManifest: Manifest[T],
-                 arg1Manifest: Manifest[A],
-                 arg2Manifest: Manifest[B],
-                 arg3Manifest: Manifest[C],
-                 arg4Manifest: Manifest[D]): T = {
+    def create[T, A, B, C, D]
+          (arg1: A, arg2: B, arg3: C, arg4: D)
+          (implicit constructable: Constructable4[T, A, B, C, D],
+           constructableManifest: Manifest[T],
+           arg1Manifest: Manifest[A],
+           arg2Manifest: Manifest[B],
+           arg3Manifest: Manifest[C],
+           arg4Manifest: Manifest[D]): T = {
 
       construct(constructableManifest.erasure,
         Seq(arg1Manifest, arg2Manifest, arg3Manifest, arg4Manifest).map(_.erasure),
@@ -145,19 +154,19 @@ object DependencyInjection {
     }
   }
 
+  implicit object DooJammerConstructable extends Constructable2[DooJammer, String, Int] { }
+  implicit object WhimwhamConstructable extends Constructable[Whimwham] { }
+
   class DooJammer(
     val x: String,
     val y: Int,
     val fooService: FooService,
     val barService: BarService,
-    val container: DependencyInjectionContainer)
-    extends
-      Constructable2[String, Int] {
+    val container: DependencyInjectionContainer) {
     def frob(): Unit = println("%s, %s, %s, %s" format (x, y, fooService.serve, barService.serve))
     def wobble(): Unit = container.create[Whimwham].frob()
   }
-
-  class Whimwham(val fooService: FooService) extends Constructable {
+  class Whimwham(val fooService: FooService) {
     def frob(): Unit = println("Hello, %s" format fooService.serve)
   }
 
