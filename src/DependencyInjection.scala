@@ -17,6 +17,8 @@ object DependencyInjection {
   class DependencyInjectionContainerImpl(
     val parentContainer: Option[DependencyInjectionContainer]) extends DependencyInjectionContainer {
 
+    def this() = this(None)
+
     private var typesToSingletons = Map[Class[_], AnyRef](classOf[DependencyInjectionContainer] -> this)
 
     def registerSingleton[T: Manifest](instance: T): Unit = {
@@ -112,10 +114,7 @@ object DependencyInjection {
   def create[T] = new ConstructImplicit[T]
 
   def main(args: Array[String]): Unit = {
-
-    // todo: use HLists to make this construction syntax less ugly?
-    // or could just use implicits to register little ConstructableManifests?
-    val container1 = new DependencyInjectionContainerImpl(None)
+    val container1 = new DependencyInjectionContainerImpl
     container1.registerSingleton[FooService](new DevFooService {})
     container1.registerSingleton[BarService](new BarService {})
     container1.create[DooJammer]("asdasd", 12).frob()
